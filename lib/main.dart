@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:workjournel/router.dart';
 import 'package:workjournel/services/local_llm_service.dart';
 import 'package:workjournel/theme/app_theme.dart';
@@ -8,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   LocalLlmService.initialize();
+  await HardwareKeyboard.instance.syncKeyboardState();
   await _configureDesktopWindow();
   runApp(const MyApp());
 }
@@ -37,8 +39,32 @@ Future<void> _configureDesktopWindow() async {
   });
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      HardwareKeyboard.instance.syncKeyboardState();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

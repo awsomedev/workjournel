@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:workjournel/models/local_llm_model.dart';
+import 'dart:io';
 
 class LocalLlmService {
   static void initialize() {
@@ -24,16 +26,22 @@ class LocalLlmService {
   static Future<void> downloadModel(
     LocalLlmModel model, {
     required ValueChanged<int> onProgress,
+    CancelToken? cancelToken,
   }) async {
+    await _ensureDownloadPaths();
     final source = _resolveSource(model);
     if (source == null) {
       throw UnsupportedError(
         '${model.name} is not supported on this platform.',
       );
     }
-    await FlutterGemma.installModel(
+    var downloadBuilder = FlutterGemma.installModel(
       modelType: model.modelType,
-    ).fromNetwork(source).withProgress((progress) {
+    ).fromNetwork(source);
+    if (cancelToken != null) {
+      downloadBuilder = downloadBuilder.withCancelToken(cancelToken);
+    }
+    await downloadBuilder.withProgress((progress) {
       onProgress(progress);
     }).install();
   }
@@ -45,6 +53,7 @@ class LocalLlmService {
         '${model.name} is not supported on this platform.',
       );
     }
+    await _ensureDownloadPaths();
     final installed = await isModelInstalled(model);
     if (!installed) {
       throw StateError('${model.name} has not been downloaded yet.');
@@ -65,5 +74,18 @@ class LocalLlmService {
       return model.desktopUrl;
     }
     return null;
+  }
+
+  static Future<void> _ensureDownloadPaths() async {
+    if (defaultTargetPlatform != TargetPlatform.macOS &&
+        defaultTargetPlatform != TargetPlatform.windows &&
+        defaultTargetPlatform != TargetPlatform.linux) {
+      return;
+    }
+    final cacheDir = await getApplicationCacheDirectory();
+    await cacheDir.create(recursive: true);
+    await Directory(
+      '${cacheDir.path}/com.bbflight.background_downloader',
+    ).create(recursive: true);
   }
 }

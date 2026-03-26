@@ -7,6 +7,7 @@ class ModelCard extends StatelessWidget {
   final bool isSelected;
   final bool isBusy;
   final VoidCallback onDownload;
+  final VoidCallback onCancel;
   final VoidCallback onSelect;
 
   const ModelCard({
@@ -15,6 +16,7 @@ class ModelCard extends StatelessWidget {
     required this.isSelected,
     required this.isBusy,
     required this.onDownload,
+    required this.onCancel,
     required this.onSelect,
   });
 
@@ -92,6 +94,29 @@ class ModelCard extends StatelessWidget {
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: AppColors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 36,
+              child: OutlinedButton(
+                onPressed: onCancel,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: AppFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),

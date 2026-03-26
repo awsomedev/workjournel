@@ -87,6 +87,26 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
     }
   }
 
+  void _cancelDownload(String modelId) {
+    _viewModel.cancelDownload(modelId);
+    setState(() {
+      _isBusy = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Download cancelled.',
+          style: AppFonts.lexend(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: AppColors.surfaceContainerHigh,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -153,6 +173,9 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
                                   ),
                                   onDownload: () {
                                     _downloadModel(_viewModel.models[i].id);
+                                  },
+                                  onCancel: () {
+                                    _cancelDownload(_viewModel.models[i].id);
                                   },
                                   onSelect: () {
                                     _selectInstalledModel(

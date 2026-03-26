@@ -80,6 +80,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
 
   bool _isInitialized = false;
   String? _selectedModelId;
+  final Map<String, CancelToken> _cancelTokens = {};
 
   List<LocalLlmModel> get models => List.unmodifiable(_models);
 
@@ -151,8 +152,11 @@ class ModelSelectionViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final cancelToken = CancelToken();
+      _cancelTokens[model.id] = cancelToken;
       await LocalLlmService.downloadModel(
         model,
+        cancelToken: cancelToken,
         onProgress: (progress) {
           final normalizedProgress = progress.clamp(0, 100);
           _models[index] = _models[index].copyWith(
@@ -161,6 +165,10 @@ class ModelSelectionViewModel extends ChangeNotifier {
           notifyListeners();
         },
       );
+      final installed = await LocalLlmService.isModelInstalled(_models[index]);
+      if (!installed) {
+        throw StateError('${_models[index].name} was not installed.');
+      }
       _models[index] = _models[index].copyWith(
         status: ModelInstallStatus.installed,
         progress: 100,
@@ -168,7 +176,18 @@ class ModelSelectionViewModel extends ChangeNotifier {
       );
       _selectedModelId = model.id;
       notifyListeners();
+      _cancelTokens.remove(model.id);
     } catch (error) {
+      _cancelTokens.remove(model.id);
+      if (CancelToken.isCancel(error)) {
+        _models[index] = _models[index].copyWith(
+          status: ModelInstallStatus.notInstalled,
+          progress: 0,
+          clearError: true,
+        );
+        notifyListeners();
+        return;
+      }
       _models[index] = _models[index].copyWith(
         status: ModelInstallStatus.failed,
         errorMessage: error.toString(),
@@ -176,6 +195,24 @@ class ModelSelectionViewModel extends ChangeNotifier {
       notifyListeners();
       rethrow;
     }
+  }
+
+  void cancelDownload(String modelId) {
+    final index = _indexForModel(modelId);
+    if (index < 0) {
+      return;
+    }
+    if (_models[index].status != ModelInstallStatus.downloading) {
+      return;
+    }
+    _cancelTokens[modelId]?.cancel('User cancelled download');
+    _cancelTokens.remove(modelId);
+    _models[index] = _models[index].copyWith(
+      status: ModelInstallStatus.notInstalled,
+      progress: 0,
+      clearError: true,
+    );
+    notifyListeners();
   }
 
   Future<void> selectModel(String modelId) async {
