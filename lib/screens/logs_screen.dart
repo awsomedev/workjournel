@@ -17,32 +17,53 @@ class LogsScreen extends StatefulWidget {
 class _LogsScreenState extends State<LogsScreen> {
   final _viewModel = LogsViewModel();
 
+  @override
+  void initState() {
+    super.initState();
+    _viewModel.initialize();
+  }
+
+  @override
+  void dispose() {
+    _viewModel.dispose();
+    super.dispose();
+  }
+
   void _onLogTapped(LogEntry log, ResponsiveSize size) {
     if (size == ResponsiveSize.sm) {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
+        useRootNavigator: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => LogDetailBottomSheet(log: log),
+        builder: (_) => LogDetailBottomSheet(
+          log: log,
+          onDelete: _viewModel.deleteLog,
+        ),
       );
     } else {
-      setState(() => _viewModel.selectLog(log));
+      _viewModel.selectLog(log);
     }
   }
 
   void _clearSelection() {
-    setState(() => _viewModel.clearSelection());
+    _viewModel.clearSelection();
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = AppBreakpoints.fromWidth(constraints.maxWidth);
-        if (size == ResponsiveSize.sm) {
-          return _buildMobile(size);
-        }
-        return _buildDesktop(size);
+    return AnimatedBuilder(
+      animation: _viewModel,
+      builder: (context, _) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final size = AppBreakpoints.fromWidth(constraints.maxWidth);
+            if (size == ResponsiveSize.sm) {
+              return _buildMobile(size);
+            }
+            return _buildDesktop(size);
+          },
+        );
       },
     );
   }
@@ -104,9 +125,10 @@ class _LogsScreenState extends State<LogsScreen> {
                     : const Offset(1, 0),
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOutCubic,
-                child: LogDetailSidebar(
+                  child: LogDetailSidebar(
                   log: _viewModel.selectedLog,
                   onClose: _clearSelection,
+                  onDelete: _viewModel.deleteLog,
                 ),
               ),
             ),

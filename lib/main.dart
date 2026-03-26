@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:workjournel/router.dart';
+import 'package:workjournel/services/journal_storage_service.dart';
 import 'package:workjournel/services/local_llm_service.dart';
 import 'package:workjournel/theme/app_theme.dart';
 import 'package:window_manager/window_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  await JournalStorageService.initialize();
   LocalLlmService.initialize();
   await HardwareKeyboard.instance.syncKeyboardState();
   await _configureDesktopWindow();

@@ -32,23 +32,30 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _viewModel.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _sendMessage() {
-    if (!_modelViewModel.hasSelectedModel) {
+  Future<void> _sendMessage() async {
+    if (!_modelViewModel.hasSelectedModel || _viewModel.isSending) {
       return;
     }
     final text = _messageController.text;
     if (text.trim().isEmpty) {
       return;
     }
-    setState(() {
-      _viewModel.sendMessage(text);
-      _messageController.clear();
-    });
+    final selectedModel = _modelViewModel.activeModel;
+    if (selectedModel == null) {
+      return;
+    }
+    _messageController.clear();
+    final sendFuture = _viewModel.sendMessage(text, model: selectedModel);
+    await sendFuture;
+    if (!mounted) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
@@ -99,7 +106,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _modelViewModel,
+      animation: Listenable.merge([_modelViewModel, _viewModel]),
       builder: (context, _) {
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -110,7 +117,9 @@ class _ChatScreenState extends State<ChatScreen> {
               modelViewModel: _modelViewModel,
               messageController: _messageController,
               scrollController: _scrollController,
-              onSend: _sendMessage,
+              onSend: () {
+                _sendMessage();
+              },
               onModelSelectionTap: _openModelSelection,
               onInlineModelSelected: _onInlineModelSelected,
             );
@@ -193,6 +202,7 @@ class _ChatScaffold extends StatelessWidget {
                                       mobileNavClearance +
                                       28,
                                 ),
+                                agentStatus: viewModel.agentStatus,
                               )
                             : ChatEmptyState(
                                 hasSelectedModel:
@@ -211,7 +221,9 @@ class _ChatScaffold extends StatelessWidget {
                             controller: messageController,
                             onSend: onSend,
                             size: size,
-                            isEnabled: modelViewModel.hasSelectedModel,
+                            isEnabled:
+                                modelViewModel.hasSelectedModel &&
+                                !viewModel.isSending,
                           ),
                         ),
                       ),

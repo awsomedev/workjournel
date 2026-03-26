@@ -78,6 +78,42 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
     });
     try {
       await _viewModel.selectModel(modelId);
+      if (!mounted) {
+        return;
+      }
+      final selected = _viewModel.activeModel;
+      if (selected != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${selected.name} selected.',
+              style: AppFonts.lexend(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
+              ),
+            ),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not select this model right now.',
+            style: AppFonts.lexend(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: AppColors.surfaceContainerHigh,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -87,8 +123,11 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
     }
   }
 
-  void _cancelDownload(String modelId) {
-    _viewModel.cancelDownload(modelId);
+  Future<void> _cancelDownload(String modelId) async {
+    await _viewModel.cancelDownload(modelId);
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _isBusy = false;
     });

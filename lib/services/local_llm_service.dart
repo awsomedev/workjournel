@@ -58,7 +58,14 @@ class LocalLlmService {
     if (!installed) {
       throw StateError('${model.name} has not been downloaded yet.');
     }
-    await FlutterGemma.getActiveModel();
+    final spec = InferenceModelSpec.fromLegacyUrl(
+      name: model.id,
+      modelUrl: source,
+      modelType: model.modelType,
+      fileType: _resolveFileType(source),
+      replacePolicy: ModelReplacePolicy.keep,
+    );
+    FlutterGemmaPlugin.instance.modelManager.setActiveModel(spec);
   }
 
   static String? _resolveSource(LocalLlmModel model) {
@@ -74,6 +81,13 @@ class LocalLlmService {
       return model.desktopUrl;
     }
     return null;
+  }
+
+  static ModelFileType _resolveFileType(String source) {
+    if (source.endsWith('.bin') || source.endsWith('.tflite')) {
+      return ModelFileType.binary;
+    }
+    return ModelFileType.task;
   }
 
   static Future<void> _ensureDownloadPaths() async {

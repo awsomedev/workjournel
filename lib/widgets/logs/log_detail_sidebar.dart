@@ -6,8 +6,66 @@ import 'package:workjournel/widgets/logs/log_detail_content.dart';
 class LogDetailSidebar extends StatelessWidget {
   final LogEntry? log;
   final VoidCallback onClose;
+  final Future<void> Function(String id)? onDelete;
 
-  const LogDetailSidebar({super.key, required this.log, required this.onClose});
+  const LogDetailSidebar({
+    super.key,
+    required this.log,
+    required this.onClose,
+    this.onDelete,
+  });
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Delete log?',
+          style: AppFonts.plusJakartaSans(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        content: Text(
+          'This log will be permanently removed.',
+          style: AppFonts.lexend(
+            fontSize: 13,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancel',
+              style: AppFonts.lexend(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              'Delete',
+              style: AppFonts.lexend(
+                fontSize: 13,
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && log != null) {
+      await onDelete!(log!.id);
+      onClose();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +103,18 @@ class LogDetailSidebar extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
+                if (log != null && onDelete != null)
+                  IconButton(
+                    onPressed: () => _confirmDelete(context),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                    color: AppColors.onSurfaceVariant,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                  ),
+                const SizedBox(width: 4),
                 IconButton(
                   onPressed: onClose,
                   icon: const Icon(Icons.close_rounded, size: 20),

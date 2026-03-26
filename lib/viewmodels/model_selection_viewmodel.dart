@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:workjournel/models/local_llm_model.dart';
 import 'package:workjournel/services/local_llm_service.dart';
+import 'package:workjournel/services/model_persistence_service.dart';
 
 class ModelSelectionViewModel extends ChangeNotifier {
   static final ModelSelectionViewModel _instance =
@@ -105,6 +106,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
       return;
     }
     _isInitialized = true;
+    await _restorePersistedState();
     await refreshStates();
   }
 
@@ -127,6 +129,17 @@ class ModelSelectionViewModel extends ChangeNotifier {
     if (_selectedModelId != null && !_isInstalled(_selectedModelId!)) {
       _selectedModelId = null;
     }
+    if (_selectedModelId != null) {
+      final selected = activeModel;
+      if (selected != null && selected.isInstalled) {
+        try {
+          await LocalLlmService.activateModel(selected);
+        } catch (_) {
+          _selectedModelId = null;
+        }
+      }
+    }
+    await _persistModelState();
     notifyListeners();
   }
 
@@ -175,6 +188,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
         clearError: true,
       );
       _selectedModelId = model.id;
+      await _persistModelState();
       notifyListeners();
       _cancelTokens.remove(model.id);
     } catch (error) {
@@ -185,6 +199,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
           progress: 0,
           clearError: true,
         );
+        await _persistModelState();
         notifyListeners();
         return;
       }
@@ -192,12 +207,13 @@ class ModelSelectionViewModel extends ChangeNotifier {
         status: ModelInstallStatus.failed,
         errorMessage: error.toString(),
       );
+      await _persistModelState();
       notifyListeners();
       rethrow;
     }
   }
 
-  void cancelDownload(String modelId) {
+  Future<void> cancelDownload(String modelId) async {
     final index = _indexForModel(modelId);
     if (index < 0) {
       return;
@@ -212,6 +228,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
       progress: 0,
       clearError: true,
     );
+    await _persistModelState();
     notifyListeners();
   }
 
@@ -226,6 +243,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
     }
     await LocalLlmService.activateModel(model);
     _selectedModelId = model.id;
+    await _persistModelState();
     notifyListeners();
   }
 
@@ -245,5 +263,46 @@ class ModelSelectionViewModel extends ChangeNotifier {
 
   int _indexForModel(String modelId) {
     return _models.indexWhere((model) => model.id == modelId);
+  }
+
+  Future<void> _restorePersistedState() async {
+    final selectedModelId = await ModelPersistenceService.loadSelectedModelId();
+    final installedModelIds =
+        await ModelPersistenceService.loadInstalledModelIds();
+
+    for (var i = 0; i < _models.length; i++) {
+      final model = _models[i];
+      if (!LocalLlmService.isSupportedOnCurrentPlatform(model)) {
+        _models[i] = model.copyWith(status: ModelInstallStatus.unavailable);
+        continue;
+      }
+      final isPersistedInstalled = installedModelIds.contains(model.id);
+      _models[i] = model.copyWith(
+        status: isPersistedInstalled
+            ? ModelInstallStatus.installed
+            : ModelInstallStatus.notInstalled,
+        progress: isPersistedInstalled ? 100 : 0,
+        clearError: true,
+      );
+    }
+
+    if (selectedModelId != null &&
+        selectedModelId.isNotEmpty &&
+        _indexForModel(selectedModelId) >= 0) {
+      _selectedModelId = selectedModelId;
+    } else {
+      _selectedModelId = null;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> _persistModelState() async {
+    final installedModelIds = _models
+        .where((model) => model.status == ModelInstallStatus.installed)
+        .map((model) => model.id)
+        .toList(growable: false);
+    await ModelPersistenceService.saveInstalledModelIds(installedModelIds);
+    await ModelPersistenceService.saveSelectedModelId(_selectedModelId);
   }
 }
