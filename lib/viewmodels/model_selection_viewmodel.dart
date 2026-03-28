@@ -82,6 +82,8 @@ class ModelSelectionViewModel extends ChangeNotifier {
   bool _isInitialized = false;
   String? _selectedModelId;
   final Map<String, CancelToken> _cancelTokens = {};
+  final Map<String, int> _downloadSessionIds = {};
+  String? _activeDownloadModelId;
 
   List<LocalLlmModel> get models => List.unmodifiable(_models);
 
@@ -152,11 +154,17 @@ class ModelSelectionViewModel extends ChangeNotifier {
     if (index < 0) {
       return;
     }
+    if (_activeDownloadModelId != null && _activeDownloadModelId != modelId) {
+      return;
+    }
     final model = _models[index];
     if (model.status == ModelInstallStatus.downloading ||
         model.status == ModelInstallStatus.unavailable) {
       return;
     }
+    final sessionId = (_downloadSessionIds[model.id] ?? 0) + 1;
+    _downloadSessionIds[model.id] = sessionId;
+    _activeDownloadModelId = model.id;
     _models[index] = model.copyWith(
       status: ModelInstallStatus.downloading,
       progress: 0,
@@ -171,6 +179,9 @@ class ModelSelectionViewModel extends ChangeNotifier {
         model,
         cancelToken: cancelToken,
         onProgress: (progress) {
+          if (!_isSessionActive(model.id, sessionId) || cancelToken.isCancelled) {
+            return;
+          }
           final normalizedProgress = progress.clamp(0, 100);
           _models[index] = _models[index].copyWith(
             progress: normalizedProgress,
@@ -178,9 +189,15 @@ class ModelSelectionViewModel extends ChangeNotifier {
           notifyListeners();
         },
       );
+      if (!_isSessionActive(model.id, sessionId) || cancelToken.isCancelled) {
+        cancelToken.throwIfCancelled();
+      }
       final installed = await LocalLlmService.isModelInstalled(_models[index]);
       if (!installed) {
         throw StateError('${_models[index].name} was not installed.');
+      }
+      if (!_isSessionActive(model.id, sessionId)) {
+        return;
       }
       _models[index] = _models[index].copyWith(
         status: ModelInstallStatus.installed,
@@ -193,6 +210,9 @@ class ModelSelectionViewModel extends ChangeNotifier {
       _cancelTokens.remove(model.id);
     } catch (error) {
       _cancelTokens.remove(model.id);
+      if (!_isSessionActive(model.id, sessionId)) {
+        return;
+      }
       if (CancelToken.isCancel(error)) {
         _models[index] = _models[index].copyWith(
           status: ModelInstallStatus.notInstalled,
@@ -210,6 +230,13 @@ class ModelSelectionViewModel extends ChangeNotifier {
       await _persistModelState();
       notifyListeners();
       rethrow;
+    } finally {
+      if (_isSessionActive(model.id, sessionId)) {
+        _downloadSessionIds.remove(model.id);
+      }
+      if (_activeDownloadModelId == model.id) {
+        _activeDownloadModelId = null;
+      }
     }
   }
 
@@ -221,8 +248,15 @@ class ModelSelectionViewModel extends ChangeNotifier {
     if (_models[index].status != ModelInstallStatus.downloading) {
       return;
     }
+    final model = _models[index];
+    final nextSessionId = (_downloadSessionIds[modelId] ?? 0) + 1;
+    _downloadSessionIds[modelId] = nextSessionId;
     _cancelTokens[modelId]?.cancel('User cancelled download');
+    await LocalLlmService.cancelModelDownload(model);
     _cancelTokens.remove(modelId);
+    if (_activeDownloadModelId == modelId) {
+      _activeDownloadModelId = null;
+    }
     _models[index] = _models[index].copyWith(
       status: ModelInstallStatus.notInstalled,
       progress: 0,
@@ -263,6 +297,10 @@ class ModelSelectionViewModel extends ChangeNotifier {
 
   int _indexForModel(String modelId) {
     return _models.indexWhere((model) => model.id == modelId);
+  }
+
+  bool _isSessionActive(String modelId, int sessionId) {
+    return _downloadSessionIds[modelId] == sessionId;
   }
 
   Future<void> _restorePersistedState() async {
