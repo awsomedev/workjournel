@@ -3,6 +3,7 @@ import 'package:workjournel/screens/splash_screen.dart';
 import 'package:workjournel/screens/welcome_screen.dart';
 import 'package:workjournel/screens/privacy_screen.dart';
 import 'package:workjournel/screens/logs_screen.dart';
+import 'package:workjournel/screens/brag_doc_screen.dart';
 import 'package:workjournel/screens/chat_screen.dart';
 import 'package:workjournel/screens/settings_screen.dart';
 import 'package:workjournel/screens/model_selection_screen.dart';
@@ -38,6 +39,12 @@ final goRouter = GoRouter(
             GoRoute(
               path: '/logs',
               builder: (context, state) => const LogsScreen(),
+              routes: [
+                GoRoute(
+                  path: 'brag',
+                  builder: (context, state) => const BragDocScreen(),
+                ),
+              ],
             ),
           ],
         ),

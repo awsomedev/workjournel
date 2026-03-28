@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:workjournel/models/log_entry.dart';
 import 'package:workjournel/theme/app_theme.dart';
 import 'package:workjournel/viewmodels/logs_viewmodel.dart';
@@ -36,10 +37,8 @@ class _LogsScreenState extends State<LogsScreen> {
         isScrollControlled: true,
         useRootNavigator: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => LogDetailBottomSheet(
-          log: log,
-          onDelete: _viewModel.deleteLog,
-        ),
+        builder: (_) =>
+            LogDetailBottomSheet(log: log, onDelete: _viewModel.deleteLog),
       );
     } else {
       _viewModel.selectLog(log);
@@ -75,7 +74,10 @@ class _LogsScreenState extends State<LogsScreen> {
       backgroundColor: AppColors.surfaceContainerLowest,
       body: Column(
         children: [
-          SafeArea(bottom: false, child: const LogsTopBar()),
+          SafeArea(
+            bottom: false,
+            child: LogsTopBar(onBragTap: () => context.push('/logs/brag')),
+          ),
           Expanded(
             child: LogsList(
               viewModel: _viewModel,
@@ -95,7 +97,7 @@ class _LogsScreenState extends State<LogsScreen> {
         children: [
           Column(
             children: [
-              const LogsTopBar(),
+              LogsTopBar(onBragTap: () => context.push('/logs/brag')),
               Expanded(
                 child: LogsList(
                   viewModel: _viewModel,
@@ -125,7 +127,7 @@ class _LogsScreenState extends State<LogsScreen> {
                     : const Offset(1, 0),
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOutCubic,
-                  child: LogDetailSidebar(
+                child: LogDetailSidebar(
                   log: _viewModel.selectedLog,
                   onClose: _clearSelection,
                   onDelete: _viewModel.deleteLog,
