@@ -5,9 +5,7 @@ import 'package:flutter_gemma/flutter_gemma.dart';
 
 class ChatTurnPayload {
   final String reply;
-  final String action;
   final String date;
-  final String logFilter;
   final bool shouldSave;
   final String title;
   final String subtitle;
@@ -16,9 +14,7 @@ class ChatTurnPayload {
 
   const ChatTurnPayload({
     required this.reply,
-    required this.action,
     required this.date,
-    required this.logFilter,
     required this.shouldSave,
     required this.title,
     required this.subtitle,
@@ -56,32 +52,6 @@ class LocalLlmChatService {
     }
   }
 
-  Future<String> generateLogsSummary({
-    required String message,
-    required String logsContext,
-    required String modelId,
-    required ModelType modelType,
-  }) async {
-    try {
-      return await _generateLogsSummaryOnce(
-        message: message,
-        logsContext: logsContext,
-        modelId: modelId,
-        modelType: modelType,
-        forceCpu: false,
-      );
-    } catch (_) {
-      await _disposeCurrentChat();
-      return _generateLogsSummaryOnce(
-        message: message,
-        logsContext: logsContext,
-        modelId: modelId,
-        modelType: modelType,
-        forceCpu: true,
-      );
-    }
-  }
-
   Future<void> dispose() async {
     final model = _model;
     _chat = null;
@@ -104,37 +74,15 @@ class LocalLlmChatService {
       modelType: modelType,
       forceCpu: forceCpu,
     );
-    final prompt = _buildToolRoutingPrompt(message);
+    final prompt = _buildToolRoutingPrompt(
+      _messageWithNoThinkDirective(message: message, modelType: modelType),
+    );
     await _chat!.addQuery(Message.text(text: prompt, isUser: true));
     final response = await _chat!.generateChatResponse();
     final rawText = response is TextResponse
         ? response.token.trim()
         : response.toString().trim();
     return _parsePayload(rawText);
-  }
-
-  Future<String> _generateLogsSummaryOnce({
-    required String message,
-    required String logsContext,
-    required String modelId,
-    required ModelType modelType,
-    required bool forceCpu,
-  }) async {
-    await _ensureChatWithBackend(
-      modelId: modelId,
-      modelType: modelType,
-      forceCpu: forceCpu,
-    );
-    final prompt = _buildLogsSummaryPrompt(
-      message: message,
-      logsContext: logsContext,
-    );
-    await _chat!.addQuery(Message.text(text: prompt, isUser: true));
-    final response = await _chat!.generateChatResponse();
-    final rawText = response is TextResponse
-        ? response.token.trim()
-        : response.toString().trim();
-    return _cleanSummaryText(rawText);
   }
 
   Future<void> _ensureChatWithBackend({
@@ -154,10 +102,10 @@ class LocalLlmChatService {
     );
     final chat = await model.createChat(
       modelType: modelType,
-      temperature: 0.4,
+      temperature: 0.2,
       topK: 20,
       topP: 0.9,
-      isThinking: true,
+      isThinking: false,
     );
     _model = model;
     _chat = chat;
@@ -203,10 +151,8 @@ class LocalLlmChatService {
       try {
         final parsed = jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>;
         final reply = (parsed['reply'] as String?)?.trim() ?? '';
-        final action = _parseAction(parsed['action']);
-        final shouldSave = action == 'save' || _parseBool(parsed['shouldSave']);
+        final shouldSave = _parseBool(parsed['shouldSave']);
         final date = _parseDate(parsed['date']);
-        final logFilter = _parseLogFilter(parsed['filter'] ?? parsed['logFilter']);
         final title = (parsed['title'] as String?)?.trim() ?? '';
         final subtitle = (parsed['subtitle'] as String?)?.trim() ?? '';
         final body = (parsed['body'] as String?)?.trim() ?? '';
@@ -220,29 +166,32 @@ class LocalLlmChatService {
             : const <String>[];
         return ChatTurnPayload(
           reply: reply.isNotEmpty ? reply : _fallbackReply,
-          action: action,
           date: shouldSave ? (date.isNotEmpty ? date : _todayIso()) : '',
-          logFilter: action == 'get_logs' ? logFilter : '',
           shouldSave: shouldSave,
-          title: title.length > 80 ? title.substring(0, 80) : title,
-          subtitle:
-              subtitle.length > 140 ? subtitle.substring(0, 140) : subtitle,
-          body: body.length > 240 ? body.substring(0, 240) : body,
-          tags: tags,
+          title: shouldSave
+              ? (title.length > 80 ? title.substring(0, 80) : title)
+              : '',
+          subtitle: shouldSave
+              ? (subtitle.length > 140 ? subtitle.substring(0, 140) : subtitle)
+              : '',
+          body: shouldSave
+              ? (body.length > 240 ? body.substring(0, 240) : body)
+              : '',
+          tags: shouldSave ? tags : const <String>[],
         );
       } catch (_) {
-        final replyMatch = RegExp(r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)"')
-            .firstMatch(jsonMatch.group(0)!);
+        final replyMatch = RegExp(
+          r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)"',
+        ).firstMatch(jsonMatch.group(0)!);
         if (replyMatch != null) {
-          final extracted = replyMatch.group(1)!
+          final extracted = replyMatch
+              .group(1)!
               .replaceAll(r'\"', '"')
               .replaceAll(r'\\', r'\')
               .trim();
           return ChatTurnPayload(
             reply: extracted.isNotEmpty ? extracted : _fallbackReply,
-            action: 'reply',
             date: '',
-            logFilter: '',
             shouldSave: false,
             title: '',
             subtitle: '',
@@ -255,9 +204,7 @@ class LocalLlmChatService {
 
     return ChatTurnPayload(
       reply: _fallbackReply,
-      action: 'reply',
       date: '',
-      logFilter: '',
       shouldSave: false,
       title: '',
       subtitle: '',
@@ -272,31 +219,9 @@ class LocalLlmChatService {
     return false;
   }
 
-  String _parseAction(Object? raw) {
-    final text = (raw?.toString() ?? '').trim().toLowerCase();
-    if (text == 'save' || text == 'get_logs' || text == 'reply') {
-      return text;
-    }
-    return 'reply';
-  }
-
   String _parseDate(Object? raw) {
     final value = (raw?.toString() ?? '').trim();
     return RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value) ? value : '';
-  }
-
-  String _parseLogFilter(Object? raw) {
-    final value = (raw?.toString() ?? '').trim().toLowerCase();
-    if (value == 'all' || value == 'today') {
-      return value;
-    }
-    if (RegExp(r'^date:\d{4}-\d{2}-\d{2}$').hasMatch(value)) {
-      return value;
-    }
-    if (RegExp(r'^range:\d{4}-\d{2}-\d{2},\d{4}-\d{2}-\d{2}$').hasMatch(value)) {
-      return value;
-    }
-    return 'all';
   }
 
   static const _fallbackReply = 'I\'m ready. Tell me what you worked on today.';
@@ -306,94 +231,47 @@ class LocalLlmChatService {
     final todayIso = _toIsoDate(now);
     final todayHuman = _toHumanDate(now);
     return '''
-Today is $todayHuman ($todayIso). Use this as your only date reference.
+Today is $todayHuman ($todayIso). Use this as the date reference.
 
-You are WorkJournel, a private work journal assistant.
-You have one tool:
-TOOL get_logs:
-- purpose: fetch user's saved work logs
-- filters:
-  - all
-  - today
-  - date:YYYY-MM-DD
-  - range:YYYY-MM-DD,YYYY-MM-DD
+You are WorkJournel. This chat only decides if the user message should be saved as a work memory.
+Output contract (must follow exactly):
+- Return exactly one JSON object.
+- Do not output any text before or after JSON.
+- Do not output markdown, code fences, xml, tags, or thoughts.
+- Use exactly these keys and no extras, in this order:
+{"reply":"...","shouldSave":true|false,"title":"...","subtitle":"...","body":"...","tags":["..."],"date":"YYYY-MM-DD or empty"}
 
-Step 1 — Classify the message into one action:
-A) action = "save" for work report messages about what the user did.
-B) action = "get_logs" for any request asking to see, count, filter, summarize, or analyze past logs.
-C) action = "reply" for greetings, empty text, or normal chat that does not require save/get_logs.
-
-Step 2 — Date handling rules for action="save":
-- If the user mentions relative dates like "day before yesterday", "yesterday", "this monday", "last friday", resolve them to an exact date in YYYY-MM-DD from today ($todayIso).
-- If no date is mentioned, always use today ($todayIso).
-- Always return the exact resolved date in field "date".
-
-Step 3 — For action="get_logs", return a "filter":
-- all
-- today
-- date:YYYY-MM-DD
-- range:YYYY-MM-DD,YYYY-MM-DD
-Infer the best filter from user request.
-
-Step 4 — reply style:
-- Keep reply max 10 words.
-- For save: brief acknowledgment only. Do not repeat user details.
-- For get_logs: brief acknowledgment that you will check logs.
-- For reply: ask what they worked on today.
-
-Step 5 — Fill memory fields only when action="save":
-- title: max 80 chars
-- subtitle: max 140 chars, the key detail
-- body: first-person, max 240 chars (I completed... / I worked on... / I fixed...)
-- tags: 2-4 lowercase tags
-
-When action is not "save": date="", title="", subtitle="", body="", tags=[].
-When action is not "get_logs": filter="".
-
-Respond with ONLY valid JSON, no markdown, no extra text:
-{"action":"save|get_logs|reply","reply":"...","date":"YYYY-MM-DD or empty","filter":"all|today|date:YYYY-MM-DD|range:YYYY-MM-DD,YYYY-MM-DD or empty","title":"...","subtitle":"...","body":"...","tags":["..."]}
+Rules:
+1) shouldSave=true when user reports work done, progress, fix, meeting outcome, shipment, or task completion.
+2) shouldSave=false for greeting, vague chat, unclear text, or non-work content.
+3) When shouldSave=true:
+   - Resolve relative dates ("yesterday", "day before yesterday", "this monday", "last friday") to exact YYYY-MM-DD using today.
+   - If no date is mentioned, use $todayIso.
+   - date must be exact YYYY-MM-DD.
+   - title <= 80, subtitle <= 140, body <= 240 in first-person, tags 2-4 lowercase.
+   - reply must be a short supportive acknowledgment (about 8-18 words), focused on what the user completed.
+   - reply should encourage the user briefly ("nice work", "great progress", "keep it up").
+   - never use team/company phrasing like "our project", "our team", or "contribution to project".
+4) When shouldSave=false:
+   - title="", subtitle="", body="", tags=[], date="".
+   - reply should ask a clarifying follow-up question based on the user message.
 
 User: $message
 ''';
   }
 
-  String _buildLogsSummaryPrompt({
+  String _messageWithNoThinkDirective({
     required String message,
-    required String logsContext,
+    required ModelType modelType,
   }) {
-    final now = DateTime.now();
-    final todayIso = _toIsoDate(now);
-    final todayHuman = _toHumanDate(now);
-    return '''
-Today is $todayHuman ($todayIso). Use this date as reference.
-
-You are WorkJournel, answering a log question.
-User asked: $message
-
-Tool result:
-$logsContext
-
-Rules:
-- Answer only from the tool result.
-- If no logs were found, say that clearly and ask a short follow-up.
-- Keep it concise and practical.
-- Do not use markdown or JSON.
-''';
-  }
-
-  String _cleanSummaryText(String rawText) {
-    var text = rawText
-        .replaceAll(
-          RegExp(r'<think>[\s\S]*?<\/think>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(RegExp(r'<\/?think>', caseSensitive: false), '')
-        .trim();
-    final codeBlock = RegExp(r'```(?:text)?\s*([\s\S]*?)```').firstMatch(text);
-    if (codeBlock != null) {
-      text = codeBlock.group(1)!.trim();
+    if (modelType != ModelType.qwen) {
+      return message;
     }
-    return text.isNotEmpty ? text : 'I could not read the logs right now.';
+    final lower = message.toLowerCase();
+    if (lower.contains('/no_think') || lower.contains('/think')) {
+      return message;
+    }
+    return '$message /no_think';
   }
 
   String _todayIso() => _toIsoDate(DateTime.now());

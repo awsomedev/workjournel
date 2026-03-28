@@ -38,7 +38,7 @@ class ChatViewModel extends ChangeNotifier {
         modelId: model.id,
         modelType: model.modelType,
       );
-      if (payload.action == 'save') {
+      if (payload.shouldSave) {
         if (_hasRelativeDateReference(text)) {
           _setStatus(AgentStatus.resolvingDate);
         }
@@ -49,25 +49,8 @@ class ChatViewModel extends ChangeNotifier {
             payload.tags.isNotEmpty) {
           await _saveEntry(payload);
         }
-        _addAssistantMessage(payload.reply);
-      } else if (payload.action == 'get_logs') {
-        _setStatus(AgentStatus.fetchingLogs);
-        final entries = _getEntriesForFilter(payload.logFilter);
-        final logsContext = _buildLogsContext(
-          entries: entries,
-          filter: payload.logFilter,
-        );
-        _setStatus(AgentStatus.summarizing);
-        final summary = await _chatService.generateLogsSummary(
-          message: text,
-          logsContext: logsContext,
-          modelId: model.id,
-          modelType: model.modelType,
-        );
-        _addAssistantMessage(summary);
-      } else {
-        _addAssistantMessage(payload.reply);
       }
+      _addAssistantMessage(payload.reply);
     } catch (_) {
       _addAssistantMessage('Could not generate a response. Please try again.');
     } finally {
@@ -143,45 +126,5 @@ class ChatViewModel extends ChangeNotifier {
         lower.contains('this friday') ||
         lower.contains('this saturday') ||
         lower.contains('this sunday');
-  }
-
-  List<JournalEntryRecord> _getEntriesForFilter(String filter) {
-    if (filter == 'today') {
-      return JournalStorageService.getEntriesByDate(DateTime.now());
-    }
-    if (filter.startsWith('date:')) {
-      final date = _resolveEntryDate(filter.replaceFirst('date:', ''));
-      return JournalStorageService.getEntriesByDate(date);
-    }
-    if (filter.startsWith('range:')) {
-      final range = filter.replaceFirst('range:', '').split(',');
-      if (range.length == 2) {
-        final start = _resolveEntryDate(range[0]);
-        final end = _resolveEntryDate(range[1]);
-        if (start.isAfter(end)) {
-          return JournalStorageService.getEntriesByDateRange(end, start);
-        }
-        return JournalStorageService.getEntriesByDateRange(start, end);
-      }
-    }
-    return JournalStorageService.getEntries();
-  }
-
-  String _buildLogsContext({
-    required List<JournalEntryRecord> entries,
-    required String filter,
-  }) {
-    if (entries.isEmpty) {
-      return 'filter=$filter\ncount=0\nentries=[]';
-    }
-    final lines = entries.map((entry) {
-      final date = DateTime.fromMillisecondsSinceEpoch(entry.createdAtMillis);
-      final year = date.year.toString().padLeft(4, '0');
-      final month = date.month.toString().padLeft(2, '0');
-      final day = date.day.toString().padLeft(2, '0');
-      final dateText = '$year-$month-$day';
-      return '- date=$dateText | title=${entry.title} | subtitle=${entry.subtitle} | body=${entry.body} | tags=${entry.tags.join(",")}';
-    }).join('\n');
-    return 'filter=$filter\ncount=${entries.length}\nentries:\n$lines';
   }
 }

@@ -2,9 +2,7 @@ enum AgentStatus {
   idle(''),
   thinking('Thinking...'),
   resolvingDate('Figuring out date...'),
-  savingMemory('Adding to memory...'),
-  fetchingLogs('Getting the logs...'),
-  summarizing('Reading through logs...');
+  savingMemory('Adding to memory...');
 
   final String label;
 
