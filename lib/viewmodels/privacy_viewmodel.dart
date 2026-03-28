@@ -12,7 +12,7 @@ class PrivacyViewModel extends ChangeNotifier {
 
   void onContinue() {
     if (_context != null) {
-      _context!.go('/home');
+      _context!.go('/chat');
     }
   }
 

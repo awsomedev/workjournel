@@ -2,7 +2,6 @@ import 'package:go_router/go_router.dart';
 import 'package:workjournel/screens/splash_screen.dart';
 import 'package:workjournel/screens/welcome_screen.dart';
 import 'package:workjournel/screens/privacy_screen.dart';
-import 'package:workjournel/screens/home_screen.dart';
 import 'package:workjournel/screens/logs_screen.dart';
 import 'package:workjournel/screens/chat_screen.dart';
 import 'package:workjournel/screens/settings_screen.dart';
@@ -29,8 +28,8 @@ final goRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/home',
-              builder: (context, state) => const HomeScreen(),
+              path: '/chat',
+              builder: (context, state) => const ChatScreen(),
             ),
           ],
         ),
@@ -39,14 +38,6 @@ final goRouter = GoRouter(
             GoRoute(
               path: '/logs',
               builder: (context, state) => const LogsScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/chat',
-              builder: (context, state) => const ChatScreen(),
             ),
           ],
         ),

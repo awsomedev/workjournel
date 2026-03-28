@@ -9,7 +9,7 @@ class MainShell extends StatelessWidget {
 
   const MainShell({super.key, required this.navigationShell});
 
-  int get _supportedBranchCount => 4;
+  int get _supportedBranchCount => 3;
 
   void _onNavTap(int index) {
     if (index >= _supportedBranchCount) {

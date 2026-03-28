@@ -34,8 +34,8 @@ class HomeSidebar extends StatelessWidget {
           ),
           const SizedBox(height: 48),
           _SidebarNavItem(
-            icon: Icons.home_rounded,
-            label: 'Home',
+            icon: Icons.chat_bubble_outline_rounded,
+            label: 'Chat',
             isActive: activeIndex == 0,
             onTap: () => onTap(0),
           ),
@@ -48,17 +48,10 @@ class HomeSidebar extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           _SidebarNavItem(
-            icon: Icons.chat_bubble_outline_rounded,
-            label: 'Chat',
-            isActive: activeIndex == 2,
-            onTap: () => onTap(2),
-          ),
-          const SizedBox(height: 4),
-          _SidebarNavItem(
             icon: Icons.settings_outlined,
             label: 'Settings',
-            isActive: activeIndex == 3,
-            onTap: () => onTap(3),
+            isActive: activeIndex == 2,
+            onTap: () => onTap(2),
           ),
           const Spacer(),
           Padding(

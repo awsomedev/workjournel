@@ -38,8 +38,8 @@ class HomeBottomNavBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _NavItem(
-                icon: Icons.home_rounded,
-                label: 'Home',
+                icon: Icons.chat_bubble_outline_rounded,
+                label: 'Chat',
                 isActive: activeIndex == 0,
                 onTap: () => onTap(0),
               ),
@@ -50,16 +50,10 @@ class HomeBottomNavBar extends StatelessWidget {
                 onTap: () => onTap(1),
               ),
               _NavItem(
-                icon: Icons.chat_bubble_outline_rounded,
-                label: 'Chat',
-                isActive: activeIndex == 2,
-                onTap: () => onTap(2),
-              ),
-              _NavItem(
                 icon: Icons.settings_outlined,
                 label: 'Settings',
-                isActive: activeIndex == 3,
-                onTap: () => onTap(3),
+                isActive: activeIndex == 2,
+                onTap: () => onTap(2),
               ),
             ],
           ),
