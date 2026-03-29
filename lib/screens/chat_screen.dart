@@ -143,7 +143,8 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (context, _) {
         return LayoutBuilder(
           builder: (context, constraints) {
-            final size = AppBreakpoints.fromWidth(constraints.maxWidth);
+            final windowWidth = MediaQuery.of(context).size.width;
+            final size = AppBreakpoints.fromWidth(windowWidth);
             return _ChatScaffold(
               size: size,
               viewModel: _viewModel,

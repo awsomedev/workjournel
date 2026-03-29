@@ -54,51 +54,6 @@ class HomeSidebar extends StatelessWidget {
             onTap: () => onTap(2),
           ),
           const Spacer(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.outlineVariant.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    color: AppColors.onSurfaceVariant,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Sreeyesh',
-                      style: AppFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      '@sreeyesh',
-                      style: AppFonts.lexend(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

@@ -21,54 +21,9 @@ class DesktopFooter extends StatelessWidget {
             horizontal: isCompact ? 20 : 48,
             vertical: 32,
           ),
-          child: isCompact
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    copyright,
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 24,
-                      runSpacing: 8,
-                      children: const [
-                        FooterLink(text: 'Privacy'),
-                        FooterLink(text: 'Terms'),
-                        FooterLink(text: 'Support'),
-                      ],
-                    ),
-                  ],
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    copyright,
-                    const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FooterLink(text: 'Privacy'),
-                        SizedBox(width: 24),
-                        FooterLink(text: 'Terms'),
-                        SizedBox(width: 24),
-                        FooterLink(text: 'Support'),
-                      ],
-                    ),
-                  ],
-                ),
+          child: copyright,
         );
       },
-    );
-  }
-}
-
-class FooterLink extends StatelessWidget {
-  final String text;
-  const FooterLink({super.key, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: AppFonts.lexend(fontSize: 12, color: AppColors.onSurfaceVariant),
     );
   }
 }

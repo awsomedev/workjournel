@@ -73,7 +73,7 @@ class PrivacyHero extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'Your data is encrypted and only accessible by you. We never sell your personal information.',
+              'Your data stays on your device. When you choose Claude Code, prompts are processed via Anthropic\'s API under their privacy policy.*',
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyMd.copyWith(
                 fontSize: 18,
@@ -108,7 +108,7 @@ class PrivacyHero extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'ENCRYPTED & LOCAL',
+                'PRIVATE BY DESIGN',
                 style: AppTextStyles.labelSm.copyWith(
                   color: AppColors.secondary,
                   fontWeight: FontWeight.w800,
@@ -146,7 +146,7 @@ class PrivacyHero extends StatelessWidget {
         SizedBox(
           width: 600,
           child: Text(
-            'WorkJournal is built on the foundation of radical transparency. We believe your professional journey should be owned by one person: You.',
+            'WorkJournel gives you two ways to work: fully on-device with local models, or with Claude Code CLI for more capable responses. You choose what leaves your machine.',
             style: AppTextStyles.bodyMd.copyWith(
               fontSize: 20,
               height: 1.6,

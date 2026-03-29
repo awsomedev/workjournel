@@ -47,12 +47,12 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _startInitialization() async {
     await _viewModel.initialize();
     if (mounted) {
-      _navigateToWelcome();
+      if (_viewModel.onboardingComplete) {
+        context.go('/chat');
+      } else {
+        context.go('/welcome');
+      }
     }
-  }
-
-  void _navigateToWelcome() {
-    context.go('/welcome');
   }
 
   @override
@@ -107,7 +107,6 @@ class _SplashScreenState extends State<SplashScreen>
                           width: iconSize,
                           height: iconSize,
                           decoration: BoxDecoration(
-                            shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
                                 color: AppColors.primaryDim.withValues(
@@ -118,7 +117,8 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                             ],
                           ),
-                          child: ClipOval(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
                             child: Image.asset(
                               'assets/icon.png',
                               fit: BoxFit.cover,

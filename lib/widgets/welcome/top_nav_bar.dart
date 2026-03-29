@@ -38,21 +38,6 @@ class TopNavBar extends StatelessWidget {
               letterSpacing: -0.6,
             ),
           ),
-          TextButton(
-            onPressed: () {},
-            child: Text(
-              'Skip',
-              style: AppFonts.lexend(
-                fontSize: isSmall
-                    ? 14
-                    : isMedium
-                    ? 15
-                    : 14,
-                fontWeight: FontWeight.w400,
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-          ),
         ],
       ),
     );
