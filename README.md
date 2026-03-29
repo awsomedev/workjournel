@@ -10,7 +10,7 @@ WorkJournel is a privacy-first AI work journal that helps you log daily progress
 
 ## Download
 
-**[Download WorkJournel v1.0.0](https://github.com/awsomedev/workjournel/releases/tag/v1.0.0)** - macOS, iOS, Android
+**[Download WorkJournel v1.0.0](https://github.com/awsomedev/workjournel/releases/tag/v1.0.0)** - macOS
 
 ## Features
 
