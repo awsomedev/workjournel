@@ -83,6 +83,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
 
   bool _isInitialized = false;
   String? _selectedModelId;
+  bool _hasUserSelected = false;
   ClaudeCliStatus? _claudeStatus;
   bool _isCheckingClaudeStatus = false;
   final ClaudeCliService _claudeCliService = const ClaudeCliService();
@@ -151,8 +152,12 @@ class ModelSelectionViewModel extends ChangeNotifier {
 
   Future<void> applyStartupSelection() async {
     await initialize();
-    if (_selectedModelId == null && !hasInstalledLocalModels && isClaudeReady) {
+    if (!_hasUserSelected &&
+        _selectedModelId == null &&
+        !hasInstalledLocalModels &&
+        isClaudeReady) {
       _selectedModelId = claudeCodeOptionId;
+      _hasUserSelected = true;
       await _persistModelState();
       notifyListeners();
     }
@@ -175,26 +180,31 @@ class ModelSelectionViewModel extends ChangeNotifier {
       );
     }
     await _refreshClaudeStatus();
-    if (_selectedModelId != null && !_isInstalled(_selectedModelId!)) {
-      if (_selectedModelId != claudeCodeOptionId) {
-        _selectedModelId = null;
-      }
+    // Only clear selection if a local model was uninstalled.
+    if (_selectedModelId != null &&
+        _selectedModelId != claudeCodeOptionId &&
+        !_isInstalled(_selectedModelId!)) {
+      _selectedModelId = null;
+      _hasUserSelected = false;
     }
+    // Activate the selected local model if it's installed.
     if (_selectedModelId != null && _selectedModelId != claudeCodeOptionId) {
       final selected = activeModel;
       if (selected != null && selected.isInstalled) {
         try {
           await LocalLlmService.activateModel(selected);
         } catch (_) {
-          _selectedModelId = null;
+          // Keep the selection — activation can be retried.
         }
       }
     }
-    if (_selectedModelId == claudeCodeOptionId && !isClaudeReady) {
-      _selectedModelId = null;
-    }
-    if (_selectedModelId == null && !hasInstalledLocalModels && isClaudeReady) {
+    // Only auto-select Claude if user has never made a choice.
+    if (!_hasUserSelected &&
+        _selectedModelId == null &&
+        !hasInstalledLocalModels &&
+        isClaudeReady) {
       _selectedModelId = claudeCodeOptionId;
+      _hasUserSelected = true;
     }
     await _persistModelState();
     notifyListeners();
@@ -260,6 +270,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
         clearError: true,
       );
       _selectedModelId = model.id;
+      _hasUserSelected = true;
       await _persistModelState();
       notifyListeners();
       _cancelTokens.remove(model.id);
@@ -336,6 +347,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
     }
     await LocalLlmService.activateModel(model);
     _selectedModelId = model.id;
+    _hasUserSelected = true;
     await _persistModelState();
     notifyListeners();
   }
@@ -346,6 +358,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
       throw StateError(claudeStatusMessage);
     }
     _selectedModelId = claudeCodeOptionId;
+    _hasUserSelected = true;
     await _persistModelState();
     notifyListeners();
   }
@@ -376,6 +389,7 @@ class ModelSelectionViewModel extends ChangeNotifier {
     final selectedModelId = await ModelPersistenceService.loadSelectedModelId();
     final installedModelIds =
         await ModelPersistenceService.loadInstalledModelIds();
+    _hasUserSelected = await ModelPersistenceService.loadHasUserSelected();
 
     for (var i = 0; i < _models.length; i++) {
       final model = _models[i];
@@ -433,5 +447,6 @@ class ModelSelectionViewModel extends ChangeNotifier {
         .toList(growable: false);
     await ModelPersistenceService.saveInstalledModelIds(installedModelIds);
     await ModelPersistenceService.saveSelectedModelId(_selectedModelId);
+    await ModelPersistenceService.saveHasUserSelected(_hasUserSelected);
   }
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:workjournel/models/chat_message.dart';
 import 'package:workjournel/services/claude_cli_service.dart';
 
 class ChatTurnPayload {
@@ -43,12 +44,16 @@ class LocalLlmChatService {
     String? modelId,
     ModelType? modelType,
     bool useClaudeCli = false,
+    List<ChatMessage> previousMessages = const [],
   }) async {
     if (useClaudeCli) {
       if (!canUseClaudeCli) {
         throw UnsupportedError('Claude Code chat is only supported on macOS.');
       }
-      return _generateWithClaude(message: message);
+      return _generateWithClaude(
+        message: message,
+        previousMessages: previousMessages,
+      );
     }
     if (modelId == null || modelType == null) {
       throw ArgumentError(
@@ -73,8 +78,15 @@ class LocalLlmChatService {
     }
   }
 
-  Future<ChatTurnPayload> _generateWithClaude({required String message}) async {
-    final prompt = _buildToolRoutingPrompt(message);
+  Future<ChatTurnPayload> _generateWithClaude({
+    required String message,
+    List<ChatMessage> previousMessages = const [],
+  }) async {
+    final prompt = _buildToolRoutingPrompt(
+      message,
+      previousMessages: previousMessages,
+    );
+    print(prompt);
     final rawText = await _claudeCliService.chat(prompt);
     return _parsePayload(rawText);
   }
@@ -251,10 +263,14 @@ class LocalLlmChatService {
 
   static const _fallbackReply = 'I\'m ready. Tell me what you worked on today.';
 
-  String _buildToolRoutingPrompt(String message) {
+  String _buildToolRoutingPrompt(
+    String message, {
+    List<ChatMessage> previousMessages = const [],
+  }) {
     final now = DateTime.now();
     final todayIso = _toIsoDate(now);
     final todayHuman = _toHumanDate(now);
+    final historyBlock = _buildConversationHistory(previousMessages);
     return '''
 Today is $todayHuman ($todayIso). Use this as the date reference.
 
@@ -280,9 +296,26 @@ Rules:
 4) When shouldSave=false:
    - title="", subtitle="", body="", tags=[], date="".
    - reply should ask a clarifying follow-up question based on the user message.
-
+$historyBlock
 User: $message
 ''';
+  }
+
+  String _buildConversationHistory(List<ChatMessage> messages) {
+    if (messages.isEmpty) return '';
+    // Take last 20 messages to keep prompt size reasonable.
+    final recent = messages.length > 20
+        ? messages.sublist(messages.length - 20)
+        : messages;
+    final buffer = StringBuffer();
+    buffer.writeln(
+      'Conversation so far (for context only, respond to the latest User message):',
+    );
+    for (final msg in recent) {
+      final role = msg.isUser ? 'User' : 'Assistant';
+      buffer.writeln('$role: ${msg.text}');
+    }
+    return buffer.toString();
   }
 
   String _todayIso() => _toIsoDate(DateTime.now());

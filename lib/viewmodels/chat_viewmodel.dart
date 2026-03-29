@@ -37,11 +37,16 @@ class ChatViewModel extends ChangeNotifier {
     _isSending = true;
     _setStatus(AgentStatus.thinking);
     try {
+      // Pass in-memory history so Claude has conversation context.
+      final history = useClaudeCli
+          ? List<ChatMessage>.unmodifiable(messages)
+          : const <ChatMessage>[];
       final payload = await _chatService.generateChatTurn(
         message: text,
         modelId: model?.id,
         modelType: model?.modelType,
         useClaudeCli: useClaudeCli,
+        previousMessages: history,
       );
       if (payload.shouldSave) {
         if (_hasRelativeDateReference(text)) {
