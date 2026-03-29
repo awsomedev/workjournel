@@ -86,7 +86,6 @@ class LocalLlmChatService {
       message,
       previousMessages: previousMessages,
     );
-    print(prompt);
     final rawText = await _claudeCliService.chat(prompt);
     return _parsePayload(rawText);
   }
