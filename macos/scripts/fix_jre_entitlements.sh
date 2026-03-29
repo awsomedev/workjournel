@@ -102,4 +102,50 @@ find "$JRE_DIR" -type f -name "java" | while read -r file; do
   fi
 done
 
+# Sign native libraries inside JAR files (jnilib, so, dylib embedded in JARs)
+if [ "${CONFIGURATION}" = "Release" ]; then
+  echo "[fix-jre] Signing native libraries inside JAR files..."
+  RESOURCES_DIR="$APP_BUNDLE/Contents/Resources"
+
+  find "$RESOURCES_DIR" -name "*.jar" | while read -r jar; do
+    TEMP_DIR=$(mktemp -d)
+    JAR_MODIFIED=false
+
+    # List native libraries in the JAR
+    NATIVES=$(unzip -l "$jar" 2>/dev/null | grep -E '\.(jnilib|so|dylib)$' | awk '{print $4}' || true)
+
+    if [ -n "$NATIVES" ]; then
+      echo "[fix-jre] Processing JAR: $(basename "$jar")"
+
+      for native in $NATIVES; do
+        # Extract the native library
+        unzip -o -j "$jar" "$native" -d "$TEMP_DIR" 2>/dev/null || continue
+        NATIVE_FILE="$TEMP_DIR/$(basename "$native")"
+
+        if [ -f "$NATIVE_FILE" ] && file "$NATIVE_FILE" | grep -q "Mach-O"; then
+          echo "[fix-jre] Signing: $native"
+          codesign --force --sign "${SIGN_IDENTITY}" --options runtime --timestamp "$NATIVE_FILE"
+
+          # Update the JAR with the signed native
+          # Need to preserve the path inside the JAR
+          NATIVE_DIR=$(dirname "$native")
+          mkdir -p "$TEMP_DIR/repack/$NATIVE_DIR"
+          cp "$NATIVE_FILE" "$TEMP_DIR/repack/$NATIVE_DIR/"
+          JAR_MODIFIED=true
+        fi
+      done
+
+      if [ "$JAR_MODIFIED" = true ]; then
+        # Update JAR with signed natives
+        cd "$TEMP_DIR/repack"
+        zip -u "$jar" $NATIVES 2>/dev/null || true
+        cd - > /dev/null
+      fi
+    fi
+
+    rm -rf "$TEMP_DIR"
+  done
+  echo "[fix-jre] JAR native libraries signed."
+fi
+
 echo "[fix-jre] Done — JRE binaries signed without sandbox entitlements."
