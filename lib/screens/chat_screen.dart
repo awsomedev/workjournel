@@ -199,8 +199,6 @@ class _ChatScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final safeBottom = MediaQuery.of(context).padding.bottom;
     final mobileNavClearance = size == ResponsiveSize.sm ? 109.0 : 0.0;
-    print(size);
-    print("size iss what");
     final contentHorizontalPadding = switch (size) {
       ResponsiveSize.sm => 0.0,
       ResponsiveSize.md => 24.0,

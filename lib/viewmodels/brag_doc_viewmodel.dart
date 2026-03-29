@@ -177,8 +177,7 @@ class BragDocViewModel extends ChangeNotifier {
     try {
       final result = await _pdfService.download(doc);
       _savedPdfPath = result.filePath;
-    } catch (e, stack) {
-      debugPrint('PDF save error: $e\n$stack');
+    } catch (e) {
       _errorMessage = 'PDF error: $e';
     } finally {
       _isDownloading = false;

@@ -44,8 +44,6 @@ class ClaudeCliService {
       !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
   Future<ClaudeCliStatus> getStatus() async {
-    final sw = Stopwatch()..start();
-    debugPrint('[claude] getStatus() start');
     if (!isSupportedPlatform) {
       return const ClaudeCliStatus(
         isAvailable: false,
@@ -56,7 +54,6 @@ class ClaudeCliService {
     final versionResult = await _run([
       '--version',
     ], timeout: const Duration(seconds: 8));
-    debugPrint('[claude] --version done in ${sw.elapsedMilliseconds}ms (exit=${versionResult.exitCode})');
     if (versionResult.exitCode != 0) {
       return ClaudeCliStatus(
         isAvailable: false,
@@ -74,9 +71,7 @@ class ClaudeCliService {
       '--max-turns',
       '1',
     ], timeout: const Duration(seconds: 15));
-    debugPrint('[claude] auth check done in ${sw.elapsedMilliseconds}ms (exit=${authResult.exitCode})');
     final isAuthenticated = authResult.exitCode == 0;
-    debugPrint('[claude] getStatus() total: ${sw.elapsedMilliseconds}ms');
     return ClaudeCliStatus(
       isAvailable: true,
       isAuthenticated: isAuthenticated,
@@ -88,8 +83,6 @@ class ClaudeCliService {
   }
 
   Future<String> chat(String prompt) async {
-    final sw = Stopwatch()..start();
-    debugPrint('[claude] chat() start');
     if (!isSupportedPlatform) {
       throw UnsupportedError('Claude Code chat is only supported on macOS.');
     }
@@ -99,7 +92,6 @@ class ClaudeCliService {
       '--model',
       model,
     ], timeout: const Duration(minutes: 3));
-    debugPrint('[claude] chat() CLI prompt done in ${sw.elapsedMilliseconds}ms (exit=${result.exitCode})');
     if (result.exitCode != 0) {
       throw StateError(_buildError('Claude chat failed.', result));
     }
@@ -107,7 +99,6 @@ class ClaudeCliService {
     if (output.isEmpty) {
       throw StateError('Claude returned an empty response.');
     }
-    debugPrint('[claude] chat() total: ${sw.elapsedMilliseconds}ms');
     return output;
   }
 
