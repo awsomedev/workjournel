@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:workjournel/models/local_llm_model.dart';
+import 'package:workjournel/services/claude_cli_service.dart';
 import 'package:workjournel/services/local_llm_service.dart';
 import 'package:workjournel/services/model_persistence_service.dart';
 
 class ModelSelectionViewModel extends ChangeNotifier {
+  static const String claudeCodeOptionId = 'claude_code_cli';
   static final ModelSelectionViewModel _instance =
       ModelSelectionViewModel._internal();
 
@@ -81,6 +83,9 @@ class ModelSelectionViewModel extends ChangeNotifier {
 
   bool _isInitialized = false;
   String? _selectedModelId;
+  ClaudeCliStatus? _claudeStatus;
+  bool _isCheckingClaudeStatus = false;
+  final ClaudeCliService _claudeCliService = const ClaudeCliService();
   final Map<String, CancelToken> _cancelTokens = {};
   final Map<String, int> _downloadSessionIds = {};
   String? _activeDownloadModelId;
@@ -90,6 +95,38 @@ class ModelSelectionViewModel extends ChangeNotifier {
   String? get selectedModelId => _selectedModelId;
 
   bool get hasSelectedModel => _selectedModelId != null;
+  bool get supportsClaudeOption =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+  bool get isCheckingClaudeStatus => _isCheckingClaudeStatus;
+  ClaudeCliStatus? get claudeStatus => _claudeStatus;
+  bool get isClaudeSelected => _selectedModelId == claudeCodeOptionId;
+  bool get isClaudeReady => _claudeStatus?.isReady ?? false;
+  bool get hasInstalledLocalModels => _models.any((model) => model.isInstalled);
+  bool get shouldUseClaudeCli =>
+      supportsClaudeOption &&
+      (isClaudeSelected ||
+          (_selectedModelId == null && !hasInstalledLocalModels && isClaudeReady));
+  String? get claudeVersion => _claudeStatus?.version;
+  String get claudeStatusMessage {
+    if (!supportsClaudeOption) {
+      return 'Claude Code is only available on macOS.';
+    }
+    if (_isCheckingClaudeStatus) {
+      return 'Checking Claude Code status...';
+    }
+    final status = _claudeStatus;
+    if (status == null) {
+      return 'Claude Code status is unavailable.';
+    }
+    if (status.isReady) {
+      final version = status.version;
+      if (version == null || version.isEmpty) {
+        return 'Claude Code is ready.';
+      }
+      return 'Claude Code is ready ($version).';
+    }
+    return status.userMessage;
+  }
 
   LocalLlmModel? get activeModel {
     if (_selectedModelId == null) {
@@ -112,6 +149,15 @@ class ModelSelectionViewModel extends ChangeNotifier {
     await refreshStates();
   }
 
+  Future<void> applyStartupSelection() async {
+    await initialize();
+    if (_selectedModelId == null && !hasInstalledLocalModels && isClaudeReady) {
+      _selectedModelId = claudeCodeOptionId;
+      await _persistModelState();
+      notifyListeners();
+    }
+  }
+
   Future<void> refreshStates() async {
     for (var i = 0; i < _models.length; i++) {
       final model = _models[i];
@@ -128,10 +174,13 @@ class ModelSelectionViewModel extends ChangeNotifier {
         clearError: true,
       );
     }
+    await _refreshClaudeStatus();
     if (_selectedModelId != null && !_isInstalled(_selectedModelId!)) {
-      _selectedModelId = null;
+      if (_selectedModelId != claudeCodeOptionId) {
+        _selectedModelId = null;
+      }
     }
-    if (_selectedModelId != null) {
+    if (_selectedModelId != null && _selectedModelId != claudeCodeOptionId) {
       final selected = activeModel;
       if (selected != null && selected.isInstalled) {
         try {
@@ -140,6 +189,12 @@ class ModelSelectionViewModel extends ChangeNotifier {
           _selectedModelId = null;
         }
       }
+    }
+    if (_selectedModelId == claudeCodeOptionId && !isClaudeReady) {
+      _selectedModelId = null;
+    }
+    if (_selectedModelId == null && !hasInstalledLocalModels && isClaudeReady) {
+      _selectedModelId = claudeCodeOptionId;
     }
     await _persistModelState();
     notifyListeners();
@@ -267,6 +322,10 @@ class ModelSelectionViewModel extends ChangeNotifier {
   }
 
   Future<void> selectModel(String modelId) async {
+    if (modelId == claudeCodeOptionId) {
+      await selectClaudeCode();
+      return;
+    }
     final index = _indexForModel(modelId);
     if (index < 0) {
       return;
@@ -277,6 +336,16 @@ class ModelSelectionViewModel extends ChangeNotifier {
     }
     await LocalLlmService.activateModel(model);
     _selectedModelId = model.id;
+    await _persistModelState();
+    notifyListeners();
+  }
+
+  Future<void> selectClaudeCode() async {
+    await _refreshClaudeStatus();
+    if (!isClaudeReady) {
+      throw StateError(claudeStatusMessage);
+    }
+    _selectedModelId = claudeCodeOptionId;
     await _persistModelState();
     notifyListeners();
   }
@@ -324,15 +393,37 @@ class ModelSelectionViewModel extends ChangeNotifier {
       );
     }
 
-    if (selectedModelId != null &&
-        selectedModelId.isNotEmpty &&
-        _indexForModel(selectedModelId) >= 0) {
-      _selectedModelId = selectedModelId;
-    } else {
-      _selectedModelId = null;
+    _selectedModelId = null;
+    if (selectedModelId != null && selectedModelId.isNotEmpty) {
+      if (selectedModelId == claudeCodeOptionId && supportsClaudeOption) {
+        _selectedModelId = selectedModelId;
+      } else if (_indexForModel(selectedModelId) >= 0) {
+        _selectedModelId = selectedModelId;
+      }
     }
 
     notifyListeners();
+  }
+
+  Future<void> _refreshClaudeStatus() async {
+    if (!supportsClaudeOption) {
+      _claudeStatus = null;
+      _isCheckingClaudeStatus = false;
+      return;
+    }
+    _isCheckingClaudeStatus = true;
+    notifyListeners();
+    try {
+      _claudeStatus = await _claudeCliService.getStatus();
+    } catch (error) {
+      _claudeStatus = ClaudeCliStatus(
+        isAvailable: true,
+        isAuthenticated: false,
+        errorMessage: error.toString(),
+      );
+    } finally {
+      _isCheckingClaudeStatus = false;
+    }
   }
 
   Future<void> _persistModelState() async {

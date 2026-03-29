@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:workjournel/theme/app_theme.dart';
 import 'package:workjournel/viewmodels/model_selection_viewmodel.dart';
-import 'package:workjournel/viewmodels/settings_viewmodel.dart';
 import 'package:workjournel/widgets/settings/settings_model_card.dart';
-import 'package:workjournel/widgets/settings/settings_option_tile.dart';
 import 'package:workjournel/widgets/settings/settings_top_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -15,7 +13,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _settingsViewModel = SettingsViewModel();
   final _modelViewModel = ModelSelectionViewModel();
 
   @override
@@ -68,56 +65,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             builder: (context, _) {
                               return SettingsModelCard(
                                 activeModel: _modelViewModel.activeModel,
+                                isClaudeSelected: _modelViewModel.isClaudeSelected,
+                                claudeVersion: _modelViewModel.claudeVersion,
                                 onOpenModelSelection: () async {
                                   await context.push('/settings/models');
                                   await _modelViewModel.refreshStates();
                                 },
                               );
-                            },
-                          ),
-                          const SizedBox(height: 18),
-                          Text(
-                            'Runtime',
-                            style: AppFonts.plusJakartaSans(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          SettingsOptionTile(
-                            title: 'Prefer GPU backend',
-                            subtitle:
-                                'Use GPU acceleration for faster local generation when available.',
-                            value: _settingsViewModel.preferGpu,
-                            onChanged: (value) {
-                              setState(() {
-                                _settingsViewModel.setPreferGpu(value);
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          SettingsOptionTile(
-                            title: 'Local-only mode',
-                            subtitle:
-                                'Keep prompts and responses on-device without remote processing.',
-                            value: _settingsViewModel.localOnlyMode,
-                            onChanged: (value) {
-                              setState(() {
-                                _settingsViewModel.setLocalOnlyMode(value);
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          SettingsOptionTile(
-                            title: 'Auto-download models on Wi-Fi',
-                            subtitle:
-                                'Enable scheduled downloads when new on-device models become available.',
-                            value: _settingsViewModel.autoDownloadOnWifi,
-                            onChanged: (value) {
-                              setState(() {
-                                _settingsViewModel.setAutoDownloadOnWifi(value);
-                              });
                             },
                           ),
                         ],

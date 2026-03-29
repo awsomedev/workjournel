@@ -24,7 +24,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _modelViewModel.initialize();
+    _modelViewModel.applyStartupSelection();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
@@ -39,19 +39,44 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    if (!_modelViewModel.hasSelectedModel || _viewModel.isSending) {
+    if (_viewModel.isSending) {
+      return;
+    }
+    final useClaudeCli = _modelViewModel.shouldUseClaudeCli;
+    if (useClaudeCli && !_modelViewModel.isClaudeReady) {
+      final message = _modelViewModel.claudeStatusMessage;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: AppFonts.lexend(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: AppColors.surfaceContainerHigh,
+        ),
+      );
+      return;
+    }
+    if (!useClaudeCli && !_modelViewModel.hasSelectedModel) {
       return;
     }
     final text = _messageController.text;
     if (text.trim().isEmpty) {
       return;
     }
-    final selectedModel = _modelViewModel.activeModel;
-    if (selectedModel == null) {
+    final selectedModel = useClaudeCli ? null : _modelViewModel.activeModel;
+    if (!useClaudeCli && selectedModel == null) {
       return;
     }
     _messageController.clear();
-    final sendFuture = _viewModel.sendMessage(text, model: selectedModel);
+    final sendFuture = _viewModel.sendMessage(
+      text,
+      model: selectedModel,
+      useClaudeCli: useClaudeCli,
+    );
     await sendFuture;
     if (!mounted) {
       return;
@@ -115,6 +140,12 @@ class _ChatScreenState extends State<ChatScreen> {
               size: size,
               viewModel: _viewModel,
               modelViewModel: _modelViewModel,
+              usesClaudeCli: _modelViewModel.shouldUseClaudeCli,
+              claudeStatusMessage:
+                  _modelViewModel.shouldUseClaudeCli &&
+                      !_modelViewModel.isClaudeReady
+                  ? _modelViewModel.claudeStatusMessage
+                  : null,
               messageController: _messageController,
               scrollController: _scrollController,
               onSend: () {
@@ -134,6 +165,8 @@ class _ChatScaffold extends StatelessWidget {
   final ResponsiveSize size;
   final ChatViewModel viewModel;
   final ModelSelectionViewModel modelViewModel;
+  final bool usesClaudeCli;
+  final String? claudeStatusMessage;
   final TextEditingController messageController;
   final ScrollController scrollController;
   final VoidCallback onSend;
@@ -144,6 +177,8 @@ class _ChatScaffold extends StatelessWidget {
     required this.size,
     required this.viewModel,
     required this.modelViewModel,
+    required this.usesClaudeCli,
+    required this.claudeStatusMessage,
     required this.messageController,
     required this.scrollController,
     required this.onSend,
@@ -177,6 +212,24 @@ class _ChatScaffold extends StatelessWidget {
       body: Column(
         children: [
           ChatTopBar(showSafeAreaTop: size == ResponsiveSize.sm),
+          if (usesClaudeCli && claudeStatusMessage != null)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                claudeStatusMessage!,
+                style: AppFonts.lexend(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           Expanded(
             child: Padding(
               padding: EdgeInsets.symmetric(
@@ -205,9 +258,13 @@ class _ChatScaffold extends StatelessWidget {
                                 agentStatus: viewModel.agentStatus,
                               )
                             : ChatEmptyState(
-                                hasSelectedModel:
-                                    modelViewModel.hasSelectedModel,
-                                selectedModelId: modelViewModel.selectedModelId,
+                                hasSelectedModel: usesClaudeCli
+                                    ? true
+                                    : modelViewModel.hasSelectedModel,
+                                isLoading: modelViewModel.isCheckingClaudeStatus,
+                                selectedModelId: usesClaudeCli
+                                    ? null
+                                    : modelViewModel.selectedModelId,
                                 models: modelViewModel.models,
                                 onModelChanged: onInlineModelSelected,
                                 onOpenModelSelection: onModelSelectionTap,
@@ -222,8 +279,11 @@ class _ChatScaffold extends StatelessWidget {
                             onSend: onSend,
                             size: size,
                             isEnabled:
-                                modelViewModel.hasSelectedModel &&
-                                !viewModel.isSending,
+                                usesClaudeCli
+                                ? !viewModel.isSending &&
+                                      modelViewModel.isClaudeReady
+                                : modelViewModel.hasSelectedModel &&
+                                      !viewModel.isSending,
                           ),
                         ),
                       ),

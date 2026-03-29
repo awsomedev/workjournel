@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:workjournel/services/claude_cli_service.dart';
 
 class ChatTurnPayload {
   final String reply;
@@ -28,12 +29,32 @@ class LocalLlmChatService {
   InferenceChat? _chat;
   String? _chatModelId;
   ModelType? _chatModelType;
+  final ClaudeCliService _claudeCliService = const ClaudeCliService();
+
+  bool get canUseClaudeCli =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+
+  Future<ClaudeCliStatus> getClaudeStatus() {
+    return _claudeCliService.getStatus();
+  }
 
   Future<ChatTurnPayload> generateChatTurn({
     required String message,
-    required String modelId,
-    required ModelType modelType,
+    String? modelId,
+    ModelType? modelType,
+    bool useClaudeCli = false,
   }) async {
+    if (useClaudeCli) {
+      if (!canUseClaudeCli) {
+        throw UnsupportedError('Claude Code chat is only supported on macOS.');
+      }
+      return _generateWithClaude(message: message);
+    }
+    if (modelId == null || modelType == null) {
+      throw ArgumentError(
+        'modelId and modelType are required on this platform.',
+      );
+    }
     try {
       return await _generateOnce(
         message: message,
@@ -50,6 +71,12 @@ class LocalLlmChatService {
         forceCpu: true,
       );
     }
+  }
+
+  Future<ChatTurnPayload> _generateWithClaude({required String message}) async {
+    final prompt = _buildToolRoutingPrompt(message);
+    final rawText = await _claudeCliService.chat(prompt);
+    return _parsePayload(rawText);
   }
 
   Future<void> dispose() async {

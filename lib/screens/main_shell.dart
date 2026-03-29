@@ -1,13 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:workjournel/theme/app_theme.dart';
+import 'package:workjournel/viewmodels/model_selection_viewmodel.dart';
 import 'package:workjournel/widgets/home/home_bottom_nav_bar.dart';
 import 'package:workjournel/widgets/home/home_sidebar.dart';
 
-class MainShell extends StatelessWidget {
+class MainShell extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const MainShell({super.key, required this.navigationShell});
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  final _modelSelectionViewModel = ModelSelectionViewModel();
+
+  @override
+  void initState() {
+    super.initState();
+    _modelSelectionViewModel.applyStartupSelection();
+  }
 
   int get _supportedBranchCount => 3;
 
@@ -15,9 +29,9 @@ class MainShell extends StatelessWidget {
     if (index >= _supportedBranchCount) {
       return;
     }
-    navigationShell.goBranch(
+    widget.navigationShell.goBranch(
       index,
-      initialLocation: index == navigationShell.currentIndex,
+      initialLocation: index == widget.navigationShell.currentIndex,
     );
   }
 
@@ -39,13 +53,13 @@ class MainShell extends StatelessWidget {
       backgroundColor: AppColors.surfaceContainerLowest,
       body: Stack(
         children: [
-          Positioned.fill(child: navigationShell),
+          Positioned.fill(child: widget.navigationShell),
           Positioned(
             left: 19.5,
             right: 19.5,
             bottom: 24,
             child: HomeBottomNavBar(
-              activeIndex: navigationShell.currentIndex,
+              activeIndex: widget.navigationShell.currentIndex,
               onTap: _onNavTap,
             ),
           ),
@@ -60,10 +74,10 @@ class MainShell extends StatelessWidget {
       body: Row(
         children: [
           HomeSidebar(
-            activeIndex: navigationShell.currentIndex,
+            activeIndex: widget.navigationShell.currentIndex,
             onTap: _onNavTap,
           ),
-          Expanded(child: navigationShell),
+          Expanded(child: widget.navigationShell),
         ],
       ),
     );

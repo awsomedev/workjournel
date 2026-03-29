@@ -20,10 +20,14 @@ class ChatViewModel extends ChangeNotifier {
 
   Future<void> sendMessage(
     String rawText, {
-    required LocalLlmModel model,
+    LocalLlmModel? model,
+    required bool useClaudeCli,
   }) async {
     final text = rawText.trim();
     if (text.isEmpty) return;
+    if (!useClaudeCli && model == null) {
+      return;
+    }
 
     _counter += 1;
     messages.add(
@@ -35,8 +39,9 @@ class ChatViewModel extends ChangeNotifier {
     try {
       final payload = await _chatService.generateChatTurn(
         message: text,
-        modelId: model.id,
-        modelType: model.modelType,
+        modelId: model?.id,
+        modelType: model?.modelType,
+        useClaudeCli: useClaudeCli,
       );
       if (payload.shouldSave) {
         if (_hasRelativeDateReference(text)) {

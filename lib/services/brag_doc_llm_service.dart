@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:workjournel/models/journal_entry_record.dart';
+import 'package:workjournel/services/claude_cli_service.dart';
 
 class BragDocLlmService {
   InferenceModel? _model;
   InferenceChat? _chat;
   String? _chatModelId;
   ModelType? _chatModelType;
+  final ClaudeCliService _claudeCliService = const ClaudeCliService();
 
   Future<String> generateBragDoc({
     required List<JournalEntryRecord> memories,
@@ -35,6 +37,20 @@ class BragDocLlmService {
         forceCpu: true,
       );
     }
+  }
+
+  Future<String> generateBragDocWithClaude({
+    required List<JournalEntryRecord> memories,
+    required DateTime fromDate,
+    required DateTime toDate,
+  }) async {
+    final prompt = _buildPromptPlain(
+      memories: memories,
+      fromDate: fromDate,
+      toDate: toDate,
+    );
+    final rawText = await _claudeCliService.chat(prompt);
+    return _sanitizeMarkdown(rawText);
   }
 
   Future<void> dispose() async {
@@ -120,11 +136,10 @@ class BragDocLlmService {
     _chatModelType = null;
   }
 
-  String _buildPrompt({
+  String _buildPromptPlain({
     required List<JournalEntryRecord> memories,
     required DateTime fromDate,
     required DateTime toDate,
-    required ModelType modelType,
   }) {
     final memoryLines = memories
         .map((entry) {
@@ -135,8 +150,7 @@ class BragDocLlmService {
           return '- date: ${_toIsoDate(created)} | title: ${entry.title} | subtitle: ${entry.subtitle} | body: ${entry.body} | tags: [$tags]';
         })
         .join('\n');
-    final message =
-        '''
+    return '''
 You are WorkJournel Brag Writer.
 Generate a brag document in markdown from the provided work memories.
 
@@ -160,6 +174,19 @@ From ${_toIsoDate(fromDate)} to ${_toIsoDate(toDate)}.
 Memories:
 $memoryLines
 ''';
+  }
+
+  String _buildPrompt({
+    required List<JournalEntryRecord> memories,
+    required DateTime fromDate,
+    required DateTime toDate,
+    required ModelType modelType,
+  }) {
+    final message = _buildPromptPlain(
+      memories: memories,
+      fromDate: fromDate,
+      toDate: toDate,
+    );
     if (modelType != ModelType.qwen) {
       return message;
     }

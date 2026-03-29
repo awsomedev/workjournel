@@ -4,11 +4,15 @@ import 'package:workjournel/theme/app_theme.dart';
 
 class SettingsModelCard extends StatelessWidget {
   final LocalLlmModel? activeModel;
+  final bool isClaudeSelected;
+  final String? claudeVersion;
   final VoidCallback onOpenModelSelection;
 
   const SettingsModelCard({
     super.key,
     required this.activeModel,
+    required this.isClaudeSelected,
+    this.claudeVersion,
     required this.onOpenModelSelection,
   });
 
@@ -27,7 +31,7 @@ class SettingsModelCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Local Model',
+            isClaudeSelected ? 'Claude Code' : 'Local Model',
             style: AppFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -36,18 +40,24 @@ class SettingsModelCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            activeModel?.name ?? 'No model selected',
+            isClaudeSelected
+                ? 'Claude Haiku 4.5'
+                : (activeModel?.name ?? 'No model selected'),
             style: AppFonts.plusJakartaSans(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: activeModel == null ? Colors.white : AppColors.primary,
+              color: (isClaudeSelected || activeModel != null)
+                  ? AppColors.primary
+                  : Colors.white,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            activeModel == null
-                ? 'Choose a model to enable local chat responses.'
-                : '${activeModel!.summary} • ${activeModel!.sizeLabel}',
+            isClaudeSelected
+                ? 'Using Claude Code CLI${claudeVersion != null ? ' ($claudeVersion)' : ''}'
+                : (activeModel == null
+                    ? 'Choose a model to enable local chat responses.'
+                    : '${activeModel!.summary} • ${activeModel!.sizeLabel}'),
             style: AppFonts.lexend(
               fontSize: 13,
               fontWeight: FontWeight.w400,

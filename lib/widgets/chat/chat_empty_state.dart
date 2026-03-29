@@ -4,6 +4,7 @@ import 'package:workjournel/theme/app_theme.dart';
 
 class ChatEmptyState extends StatelessWidget {
   final bool hasSelectedModel;
+  final bool isLoading;
   final String? selectedModelId;
   final List<LocalLlmModel> models;
   final ValueChanged<String?> onModelChanged;
@@ -12,6 +13,7 @@ class ChatEmptyState extends StatelessWidget {
   const ChatEmptyState({
     super.key,
     required this.hasSelectedModel,
+    this.isLoading = false,
     required this.selectedModelId,
     required this.models,
     required this.onModelChanged,
@@ -20,6 +22,33 @@ class ChatEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Setting up...',
+              style: AppFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

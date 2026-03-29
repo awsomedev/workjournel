@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:workjournel/theme/app_theme.dart';
 import 'package:workjournel/viewmodels/model_selection_viewmodel.dart';
+import 'package:workjournel/widgets/models/claude_code_card.dart';
 import 'package:workjournel/widgets/models/model_card.dart';
 import 'package:workjournel/widgets/models/model_selection_top_bar.dart';
 
@@ -146,6 +147,54 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
     );
   }
 
+  Future<void> _selectClaudeCode() async {
+    setState(() {
+      _isBusy = true;
+    });
+    try {
+      await _viewModel.selectClaudeCode();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Claude Code selected.',
+            style: AppFonts.lexend(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
+            ),
+          ),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _viewModel.claudeStatusMessage,
+            style: AppFonts.lexend(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: AppColors.surfaceContainerHigh,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBusy = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -190,6 +239,16 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              if (_viewModel.supportsClaudeOption) ...[
+                                ClaudeCodeCard(
+                                  isSelected: _viewModel.isClaudeSelected,
+                                  isBusy: _isBusy,
+                                  isReady: _viewModel.isClaudeReady,
+                                  statusMessage: _viewModel.claudeStatusMessage,
+                                  onSelect: _selectClaudeCode,
+                                ),
+                                const SizedBox(height: 14),
+                              ],
                               Text(
                                 'Installed and downloadable local models',
                                 style: AppFonts.lexend(
