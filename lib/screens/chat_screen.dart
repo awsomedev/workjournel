@@ -25,6 +25,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _modelViewModel.applyStartupSelection();
+    _viewModel.addListener(_onMessagesChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
@@ -32,10 +33,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _viewModel.removeListener(_onMessagesChanged);
     _viewModel.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onMessagesChanged() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -190,6 +198,8 @@ class _ChatScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final safeBottom = MediaQuery.of(context).padding.bottom;
     final mobileNavClearance = size == ResponsiveSize.sm ? 109.0 : 0.0;
+    print(size);
+    print("size iss what");
     final contentHorizontalPadding = switch (size) {
       ResponsiveSize.sm => 0.0,
       ResponsiveSize.md => 24.0,
@@ -261,7 +271,8 @@ class _ChatScaffold extends StatelessWidget {
                                 hasSelectedModel: usesClaudeCli
                                     ? true
                                     : modelViewModel.hasSelectedModel,
-                                isLoading: modelViewModel.isCheckingClaudeStatus,
+                                isLoading:
+                                    modelViewModel.isCheckingClaudeStatus,
                                 selectedModelId: usesClaudeCli
                                     ? null
                                     : modelViewModel.selectedModelId,
@@ -278,8 +289,7 @@ class _ChatScaffold extends StatelessWidget {
                             controller: messageController,
                             onSend: onSend,
                             size: size,
-                            isEnabled:
-                                usesClaudeCli
+                            isEnabled: usesClaudeCli
                                 ? !viewModel.isSending &&
                                       modelViewModel.isClaudeReady
                                 : modelViewModel.hasSelectedModel &&

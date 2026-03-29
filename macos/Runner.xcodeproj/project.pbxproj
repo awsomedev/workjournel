@@ -242,6 +242,7 @@
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				A52110648FDDC39B30934A33 /* [CP] Embed Pods Frameworks */,
 				D97A8DF8F59730336FB46E40 /* Setup LiteRT-LM Desktop */,
+				E1A2B3C4D5E6F70812345678 /* Fix JRE Entitlements */,
 			);
 			buildRules = (
 			);
@@ -440,6 +441,24 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "PLUGIN_PATH=\"${PODS_ROOT}/../Flutter/ephemeral/.symlinks/plugins/flutter_gemma/macos\"\nif [ -f \"$PLUGIN_PATH/scripts/setup_desktop.sh\" ]; then\n  sh \"$PLUGIN_PATH/scripts/setup_desktop.sh\" \"$PLUGIN_PATH\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app\"\nfi\n";
+		};
+		E1A2B3C4D5E6F70812345678 /* Fix JRE Entitlements */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Fix JRE Entitlements";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/fix_jre_entitlements.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

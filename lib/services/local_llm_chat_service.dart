@@ -101,9 +101,7 @@ class LocalLlmChatService {
       modelType: modelType,
       forceCpu: forceCpu,
     );
-    final prompt = _buildToolRoutingPrompt(
-      _messageWithNoThinkDirective(message: message, modelType: modelType),
-    );
+    final prompt = _buildToolRoutingPrompt(message);
     await _chat!.addQuery(Message.text(text: prompt, isUser: true));
     final response = await _chat!.generateChatResponse();
     final rawText = response is TextResponse
@@ -285,20 +283,6 @@ Rules:
 
 User: $message
 ''';
-  }
-
-  String _messageWithNoThinkDirective({
-    required String message,
-    required ModelType modelType,
-  }) {
-    if (modelType != ModelType.qwen) {
-      return message;
-    }
-    final lower = message.toLowerCase();
-    if (lower.contains('/no_think') || lower.contains('/think')) {
-      return message;
-    }
-    return '$message /no_think';
   }
 
   String _todayIso() => _toIsoDate(DateTime.now());
